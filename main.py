@@ -6,7 +6,9 @@ from datetime import datetime, date
 from splitwise import Splitwise
 from dotenv import load_dotenv
 
-
+year=2022
+month=12
+day=2
 
 
 def main():
@@ -20,11 +22,12 @@ def main():
         generate_access_token(s)
         authenticate_from_saved_token(s)
 
-    expenses = s.getExpenses(dated_after=datetime(2022, 8, 1))
+    expenses = s.getExpenses(dated_after=datetime(year, month, day), limit=100)
     items = get_items(expenses, s)
-    generate_qif(items)
+    first_name = s.getCurrentUser().getFirstName();
+    generate_qif(items, first_name)
     for item in items:
-        print(item.get_date(), item.get_payee(), item.get_description(), item.get_value_to_user("Jack"), item.get_other_user("Jack"))
+        print(item.get_date(), item.get_payee(), item.get_description(), item.get_value_to_user(first_name), item.get_other_user(first_name))
 
 def get_items(expenses, s):
     items = []
@@ -35,7 +38,7 @@ def get_items(expenses, s):
             users_human.append(str(user.getFirstName()))
         repayments = expense.getRepayments()
         for repayment in repayments:
-            items.append(SplitwiseItem(expense.getDate(), expense.getDescription(), expense.getCost(),
+            items.append(SplitwiseItem(expense.getDate(), expense.getDescription(), repayment.getAmount(),
                                        s.getUser(repayment.getFromUser()).getFirstName(),
                                        s.getUser(repayment.getToUser()).getFirstName()))
     return items
@@ -115,15 +118,15 @@ class SplitwiseItem:
                   self._paid_to)
             return ""
 
-def generate_qif(items):
+def generate_qif(items, name):
     with open("output.qif", "w") as f:
         f.write("!Type:Cash\n")
         for item in items:
             f.write("D"+str(item.get_date().month)+"/"+str(item.get_date().day)+"'"+str(item.get_date().year)+"\n")
-            f.write("U"+str(item.get_value_to_user("Jack"))+"\n")
-            f.write("T"+str(item.get_value_to_user("Jack"))+"\n")
+            f.write("U"+str(item.get_value_to_user(name))+"\n")
+            f.write("T"+str(item.get_value_to_user(name))+"\n")
             f.write("P"+str(item.get_payee())+"\n")
-            f.write("M"+str(item.get_description())+" ("+str(item.get_other_user("Jack"))+")"+"\n")
+            f.write("M"+str(item.get_description())+" ("+str(item.get_other_user(name))+")"+"\n")
             f.write("^\n")
 
 
